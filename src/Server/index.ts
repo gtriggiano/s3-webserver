@@ -1,30 +1,19 @@
 import { AWSError, S3 } from 'aws-sdk'
+import express, { Application, Response } from 'express'
 import { compact } from 'lodash'
-import {
-  HttpResponse,
-  RecognizedString,
-  TemplatedApp,
-  us_listen_socket,
-  us_listen_socket_close,
-} from 'uWebSockets.js'
 
 import {
   DOCUMENT_404_KEY,
   S3 as S3Config,
   TemplatedApp as TemplatedAppConfig,
 } from '../config'
-import { App } from './App'
 
 export const Server = ({
-  app: { enableSSL, SSL_CERT, SSL_KEY, SSL_KEY_PASSPHRASE },
   s3: { ACCESS_KEY_ID, SECRET_ACCESS_KEY, ENDPOINT, BUCKET, FOLDER },
-}: Config): TemplatedApp => {
-  const app = App({
-    enableSSL,
-    SSL_CERT,
-    SSL_KEY,
-    SSL_KEY_PASSPHRASE,
-  })
+}: Config): Application => {
+  const app = express()
+
+  app.set('trust proxy', true)
 
   const s3 = new S3({
     credentials: {
@@ -46,7 +35,7 @@ export const Server = ({
       .promise()
   }
 
-  const serveKey = async (key: string, res: HttpResponse) => {
+  const serveKey = async (key: string, res: Response) => {
     try {
       const request = s3
         .getObject({
@@ -57,7 +46,7 @@ export const Server = ({
 
       const result = await request
 
-      res.writeStatus(`200 OK`)
+      res.status(200)
 
       const {
         Body,
@@ -78,38 +67,42 @@ export const Server = ({
         'Content-Type': ContentType,
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET',
-        'Access-Control-Allow-Headers': 'Host,Content-*',
+        'Access-Control-Allow-Headers': '*',
         'Access-Control-Max-Age': '3000',
       }
+
+      console.log(headers)
 
       Object.keys(headers).forEach((headerName) => {
         const value = headers[headerName]
         if (value) {
-          res.writeHeader(headerName, value)
+          res.setHeader(headerName, value)
         }
       })
       if (Body) {
-        res.write(Body as RecognizedString)
+        console.log(Body)
+        res.send(Body)
+      } else {
+        res.end()
       }
-      res.end()
     } catch (error) {
+      console.log(error)
       const { statusCode } = error as AWSError
       if (statusCode === 404 && DOCUMENT_404_KEY && DOCUMENT_404_KEY !== key) {
         serveKey(DOCUMENT_404_KEY, res)
         return
       }
 
-      res.writeStatus(String(error.statusCode))
-      res.end()
+      res.sendStatus(error.statusCode)
     }
   }
 
   const serveKeysList = async (
     folderKey: string,
     keys: string[],
-    res: HttpResponse,
+    res: Response,
   ) => {
-    res.write(
+    res.send(
       `<html>
 <head>
     <title>${folderKey}</title>
@@ -129,20 +122,21 @@ export const Server = ({
 </html>
       `,
     )
-    res.end()
   }
 
-  app.get('/healthz', (res) => {
-    res.writeStatus('200')
-    res.end()
+  app.get('/healthz', (req, res) => {
+    console.log('Health check')
+    res.sendStatus(200)
   })
 
-  app.get('/*', async (res, req) => {
-    res.onAborted(() => undefined)
+  app.get('/*', async (req, res) => {
+    // res.onAborted(() => undefined)
 
-    const path = req.getUrl().substr(1)
+    const path = req.url.substr(1)
     const prefix = FOLDER && `${FOLDER}/`
     const pathInBucket = unescape(`${prefix}${path}`)
+
+    console.log(`Request: ${pathInBucket}`)
 
     if (pathInBucket === prefix || pathInBucket.substr(-1) === '/') {
       try {
@@ -171,9 +165,8 @@ export const Server = ({
         return
       } catch (error) {
         const { statusCode, message } = error as AWSError
-        res.writeStatus(String(statusCode))
-        res.write(message)
-        res.end()
+        statusCode && res.status(statusCode)
+        res.send(message)
         return
       }
     }
@@ -183,9 +176,6 @@ export const Server = ({
 
   return app
 }
-
-export const closeSocket = (socket: us_listen_socket): void =>
-  us_listen_socket_close(socket)
 
 interface Config {
   app: TemplatedAppConfig

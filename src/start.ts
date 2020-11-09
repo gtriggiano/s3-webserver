@@ -1,5 +1,5 @@
 import { HTTP_PORT, HTTPS_PORT, S3, TemplatedApp } from './config'
-import { closeSocket, Server } from './Server'
+import { Server } from './Server'
 
 const PORT = TemplatedApp.enableSSL ? HTTPS_PORT : HTTP_PORT
 
@@ -16,7 +16,9 @@ const SIGNALS = {
 
 type Signal = keyof typeof SIGNALS
 
-server.listen('0.0.0.0', PORT, (socket) => {
+const httpServer = server.listen(PORT)
+
+httpServer.on('listening', () => {
   console.log(
     `Serving ${S3.BUCKET}/${S3.FOLDER} from ${S3.ENDPOINT} on port ${PORT}`,
   )
@@ -24,11 +26,11 @@ server.listen('0.0.0.0', PORT, (socket) => {
   const shutdown = (SIGNAL: Signal) => {
     console.log('shutdown!')
     process.removeAllListeners()
-    closeSocket(socket)
-
-    const value = SIGNALS[SIGNAL]
-    console.log(`server stopped by ${SIGNAL} with value ${value}`)
-    process.exit(128 + value)
+    httpServer.close(() => {
+      const value = SIGNALS[SIGNAL]
+      console.log(`server stopped by ${SIGNAL} with value ${value}`)
+      process.exit(128 + value)
+    })
   }
 
   Object.keys(SIGNALS).forEach((SIGNAL) => {
