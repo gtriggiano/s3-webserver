@@ -1,0 +1,38 @@
+{
+  "name": "@gtriggiano/s3-webserver",
+  "version": "0.0.0",
+  "description": "",
+  "main": "dist/start.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "nodemon src/start.ts",
+    "start": "node dist/start.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gtriggiano/s3-webserver.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gtriggiano/s3-webserver/issues"
+  },
+  "homepage": "https://github.com/gtriggiano/s3-webserver#readme",
+  "devDependencies": {
+    "@types/node": "^14.14.6",
+    "@typescript-eslint/eslint-plugin": "^4.6.1",
+    "@typescript-eslint/parser": "^4.6.1",
+    "eslint": "^7.13.0",
+    "eslint-config-prettier": "^6.15.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "eslint-plugin-simple-import-sort": "^5.0.3",
+    "nodemon": "^2.0.6",
+    "prettier": "^2.1.2",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.5"
+  },
+  "dependencies": {
+    "uws": "^200.0.0"
+  }
+}
