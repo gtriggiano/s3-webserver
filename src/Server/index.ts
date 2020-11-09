@@ -1,6 +1,12 @@
 import { AWSError, S3 } from 'aws-sdk'
 import { compact } from 'lodash'
-import { HttpResponse, RecognizedString, TemplatedApp } from 'uWebSockets.js'
+import {
+  HttpResponse,
+  RecognizedString,
+  TemplatedApp,
+  us_listen_socket,
+  us_listen_socket_close,
+} from 'uWebSockets.js'
 
 import {
   DOCUMENT_404_KEY,
@@ -177,6 +183,9 @@ export const Server = ({
 
   return app
 }
+
+export const closeSocket = (socket: us_listen_socket): void =>
+  us_listen_socket_close(socket)
 
 interface Config {
   app: TemplatedAppConfig
