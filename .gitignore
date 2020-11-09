@@ -113,4 +113,5 @@ temp/
 # Distribution folder
 dist/
 ignored/
+.env
 
