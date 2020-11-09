@@ -126,6 +126,11 @@ export const Server = ({
     res.end()
   }
 
+  app.get('/healthz', (res) => {
+    res.writeStatus('200')
+    res.end()
+  })
+
   app.get('/*', async (res, req) => {
     res.onAborted(() => undefined)
 
