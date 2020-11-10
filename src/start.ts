@@ -1,10 +1,10 @@
-import { HTTP_PORT, HTTPS_PORT, S3, TemplatedApp } from './config'
+import { App, HTTP_PORT, HTTPS_PORT, S3 } from './config'
 import { Server } from './Server'
 
-const PORT = TemplatedApp.enableSSL ? HTTPS_PORT : HTTP_PORT
+const PORT = App.enableSSL ? HTTPS_PORT : HTTP_PORT
 
 const server = Server({
-  app: TemplatedApp,
+  app: App,
   s3: S3,
 })
 

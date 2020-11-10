@@ -19,6 +19,8 @@ WORKDIR /app
 COPY --from=application /app/node_modules /app/node_modules
 COPY --from=application /app/dist /app/dist
 
+ENV NODE_ENV production
+
 EXPOSE 80
 EXPOSE 443
 
