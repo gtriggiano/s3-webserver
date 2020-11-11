@@ -44,6 +44,7 @@
     "envalid": "^6.0.2",
     "express": "^4.17.1",
     "express-winston": "^4.0.5",
+    "helmet": "^4.2.0",
     "lodash": "^4.17.20",
     "node-cache": "^5.1.2",
     "winston": "^3.3.3"

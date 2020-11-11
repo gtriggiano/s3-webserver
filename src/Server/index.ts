@@ -3,6 +3,7 @@ import compression from 'compression'
 import D from 'debug'
 import express, { Application, Request, Response } from 'express'
 import expressWinston from 'express-winston'
+import helmet from 'helmet'
 import NodeCache from 'node-cache'
 import winston from 'winston'
 
@@ -226,6 +227,8 @@ export const Server = ({
   const app = express()
   app.set('trust proxy', true)
   app.disable('x-powered-by')
+
+  app.use(helmet())
 
   app.get('/healthz', (req, res) => {
     res.sendStatus(200)
