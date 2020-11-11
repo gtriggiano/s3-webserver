@@ -33,6 +33,7 @@ export const Server = ({
     DEFAULT_403_FILE,
     DEFAULT_404_FILE,
     FOLDER_INDEX_FILE_NAME,
+    TRUST_PROXY,
   },
   s3: {
     ACCESS_KEY_ID,
@@ -225,10 +226,16 @@ export const Server = ({
   }
 
   const app = express()
-  app.set('trust proxy', true)
-  app.disable('x-powered-by')
+  app.set('trust proxy', TRUST_PROXY)
 
-  app.use(helmet())
+  const helmetMiddleware = helmet()
+  app.use((req, res, next) => {
+    if (req.protocol === 'https') {
+      helmetMiddleware(req, res, next)
+    } else {
+      next()
+    }
+  })
 
   app.get('/healthz', (req, res) => {
     res.sendStatus(200)
