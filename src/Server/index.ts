@@ -1,4 +1,5 @@
 import { S3 } from 'aws-sdk'
+import compression from 'compression'
 import D from 'debug'
 import express, { Application, Request, Response } from 'express'
 import expressWinston from 'express-winston'
@@ -229,6 +230,8 @@ export const Server = ({
   app.get('/healthz', (req, res) => {
     res.sendStatus(200)
   })
+
+  app.use(compression())
 
   if (process.env.NODE_ENV === 'production') {
     app.use(LOG_MIDDLEWARE)
