@@ -58,7 +58,7 @@ export const makeListBucketPath = (s3: S3): ListBucketPath => {
       const response = await s3
         .listObjectsV2({
           Bucket: bucket,
-          MaxKeys: 2147483647, // Maximum allowed by S3 API
+          MaxKeys: 1000000, // Maximum allowed by Wasabi S3 API
           Delimiter: '/',
           Prefix: prefix,
           StartAfter: prefix, // removes the folder name from listing
