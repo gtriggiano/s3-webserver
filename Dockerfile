@@ -1,4 +1,4 @@
-FROM node:14.15.0 as application
+FROM node:14.15.4 as application
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ RUN npm ci --production
 
 
 
-FROM node:14.15.0-slim
+FROM node:14.15.4-slim
 
 WORKDIR /app
 COPY --from=application /app/node_modules /app/node_modules

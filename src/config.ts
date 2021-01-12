@@ -1,4 +1,4 @@
-import { bool, cleanEnv, port, str } from 'envalid'
+import { bool, cleanEnv, num, port, str } from 'envalid'
 
 const env = cleanEnv(process.env, {
   HTTP_PORT: port({ default: 80 }),
@@ -7,10 +7,13 @@ const env = cleanEnv(process.env, {
   AWS_SECRET_ACCESS_KEY: str(),
   S3_BUCKET: str(),
   S3_ENDPOINT: str(),
+  S3_SIGNATURE_VERSION: str({ default: 'v4', choices: ['v2', 'v3', 'v4'] }),
   S3_FOLDER: str({ default: '' }),
   S3_FORCE_PATH_STYLE: bool({ default: false }),
   S3_IMMUTABLE_TREE: bool({ default: false }),
   S3_CACHE_RESPONSES: bool({ default: true }),
+  S3_CACHE_TTL: num({ default: 60 }),
+  S3_LOG_LEVEL: str({ default: 'none', choices: ['none', 'info', 'error'] }),
   SSL_CERT: str({ default: '' }),
   SSL_KEY: str({ default: '' }),
   SSL_KEY_PASSPHRASE: str({ default: '' }),
@@ -22,17 +25,26 @@ const env = cleanEnv(process.env, {
   FOLDER_INDEX_FILE_NAME: str({ default: 'index.html' }),
 })
 
-export const { HTTP_PORT, HTTPS_PORT } = env
+export const {
+  HTTP_PORT,
+  HTTPS_PORT,
+  SSL_CERT,
+  SSL_KEY,
+  SSL_KEY_PASSPHRASE,
+} = env
 
 export const S3 = {
   ACCESS_KEY_ID: env.AWS_ACCESS_KEY_ID,
   SECRET_ACCESS_KEY: env.AWS_SECRET_ACCESS_KEY,
   BUCKET: env.S3_BUCKET,
   ENDPOINT: env.S3_ENDPOINT.replace(/\/$/, ''),
+  SIGNATURE_VERSION: env.S3_SIGNATURE_VERSION,
   FOLDER: env.S3_FOLDER.replace(/^\/|\/$/g, ''),
   FORCE_PATH_STYLE: env.S3_FORCE_PATH_STYLE,
   IMMUTABLE_TREE: env.S3_IMMUTABLE_TREE,
   CACHE_RESPONSES: env.S3_CACHE_RESPONSES,
+  CACHE_TTL: Math.min(10, Math.floor(env.S3_CACHE_TTL)),
+  LOG_LEVEL: env.S3_LOG_LEVEL,
 }
 export type S3 = typeof S3
 
