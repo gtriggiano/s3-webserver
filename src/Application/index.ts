@@ -241,7 +241,7 @@ export const CreateApplication = ({
 
   const cspMiddleware = helmet.contentSecurityPolicy()
   app.use((req, res, next) => {
-    if (req.protocol === 'https') {
+    if (AppConfig.ENABLE_CSP && req.protocol === 'https') {
       cspMiddleware(req, res, next)
     } else {
       next()

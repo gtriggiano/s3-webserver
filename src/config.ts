@@ -19,6 +19,7 @@ const env = cleanEnv(process.env, {
   SSL_KEY_PASSPHRASE: str({ default: '' }),
 
   TRUST_PROXY: bool({ default: true }),
+  ENABLE_CSP: bool({ default: false }),
   DEFAULT_404_FILE: str({ default: '' }),
   DEFAULT_403_FILE: str({ default: '' }),
   ENABLE_DIRECTORY_LISTING: bool({ default: false }),
@@ -59,5 +60,6 @@ export const App = {
   ENABLE_DIRECTORY_LISTING: env.ENABLE_DIRECTORY_LISTING,
   FOLDER_INDEX_FILE_NAME: env.FOLDER_INDEX_FILE_NAME,
   TRUST_PROXY: env.TRUST_PROXY,
+  ENABLE_CSP: env.ENABLE_CSP,
 }
 export type App = typeof App
