@@ -249,7 +249,7 @@ export const CreateApplication = ({
   })
 
   app.get('/*', async (req, res) => {
-    const path = req.url.substr(1) // We remove the initial /
+    const path = req.path.substr(1) // We remove the initial /
     const pathInBucket = unescape(`${LOOKUP_PREFIX}${path}`)
 
     if (path === '' || pathInBucket.endsWith('/')) {
