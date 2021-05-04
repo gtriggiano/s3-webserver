@@ -4,6 +4,7 @@ import cors from 'cors'
 import express, { Application, Request, Response } from 'express'
 import expressWinston from 'express-winston'
 import helmet from 'helmet'
+import { some } from 'lodash'
 import NodeCache from 'node-cache'
 import winston from 'winston'
 
@@ -24,6 +25,9 @@ export const CreateApplication = ({
     ENABLE_DIRECTORY_LISTING,
     FOLDER_INDEX_FILE_NAME,
     TRUST_PROXY,
+    CACHE_CONTROL_MAX_AGE,
+    CACHE_CONTROL_REGEXP_LIST,
+    LOG_HTTP_CALLS,
   },
   s3: {
     ACCESS_KEY_ID,
@@ -155,7 +159,20 @@ export const CreateApplication = ({
           res.setHeader(key, value)
         }
       })
-      body ? res.send(body) : res.end()
+      if (body) {
+        const shouldAddCacheControl = some(
+          CACHE_CONTROL_REGEXP_LIST,
+          (regExp) => regExp.test(key),
+        )
+
+        if (shouldAddCacheControl) {
+          res.setHeader('Cache-Control', `max-age=${CACHE_CONTROL_MAX_AGE}`)
+        }
+
+        res.send(body)
+      } else {
+        res.end()
+      }
     }
   }
 
@@ -216,12 +233,14 @@ export const CreateApplication = ({
   app.use(compression())
   app.use(cors())
 
-  app.use(
-    expressWinston.logger({
-      transports: [new winston.transports.Console()],
-      format: winston.format.json(),
-    }),
-  )
+  if (LOG_HTTP_CALLS) {
+    app.use(
+      expressWinston.logger({
+        transports: [new winston.transports.Console()],
+        format: winston.format.json(),
+      }),
+    )
+  }
 
   app.use(helmet.hidePoweredBy())
   app.use(helmet.noSniff())
