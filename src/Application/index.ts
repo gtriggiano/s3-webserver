@@ -177,12 +177,12 @@ export const CreateApplication = ({
       if (body) {
         const isKeyEligibleForImmutableCaching = some(
           CACHE_CONTROL_REGEXP_LIST,
-          (regExp) => regExp.test(key),
+          (regExp) => regExp.test(req.path),
         )
 
         const isKeyBlacklistedFromImmutableCaching = some(
           CACHE_CONTROL_REGEXP_BLACKLIST,
-          (regExp) => regExp.test(key),
+          (regExp) => regExp.test(req.path),
         )
 
         if (
