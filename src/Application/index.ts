@@ -18,6 +18,8 @@ import {
 import { removeLeadingCharRecursively } from './utils/removeLeadingCharRecursively'
 import { removeTrailingCharRecursively } from './utils/removeTrailingCharRecursively'
 
+const GATSBY_REDIRECT_REGEX = /^<script>window\.location\.href="(.+)"<\/script>$/
+
 export const CreateApplication = ({
   app: {
     DEFAULT_403_FILE,
@@ -28,6 +30,7 @@ export const CreateApplication = ({
     CACHE_CONTROL_MAX_AGE,
     CACHE_CONTROL_REGEXP_LIST,
     LOG_HTTP_CALLS,
+    HANDLE_GATSBY_REDIRECTS,
   },
   s3: {
     ACCESS_KEY_ID,
@@ -153,6 +156,17 @@ export const CreateApplication = ({
       }
     } else {
       const { headers, body } = getResult
+
+      if (body && isFileKeyAFolderIndex(key) && HANDLE_GATSBY_REDIRECTS) {
+        const [, pathForRedirect] = [
+          ...(body.toString().match(GATSBY_REDIRECT_REGEX) || []),
+        ]
+
+        if (pathForRedirect) {
+          return res.redirect(301, pathForRedirect)
+        }
+      }
+
       Object.keys(headers).forEach((key) => {
         const value = headers[key]
         if (value) {

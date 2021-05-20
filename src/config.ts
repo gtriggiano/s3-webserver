@@ -27,6 +27,8 @@ const env = cleanEnv(process.env, {
   CACHE_CONTROL_REGEXP_LIST: str({ default: '' }),
   CACHE_CONTROL_MAX_AGE: num({ default: 60 * 60 * 24 * 5 /** 5 days */ }),
   LOG_HTTP_CALLS: bool({ default: true }),
+
+  HANDLE_GATSBY_REDIRECTS: bool({ default: false }),
 })
 
 export const {
@@ -69,5 +71,6 @@ export const App = {
     .map((regexp) => new RegExp(regexp)),
   CACHE_CONTROL_MAX_AGE: env.CACHE_CONTROL_MAX_AGE,
   LOG_HTTP_CALLS: env.LOG_HTTP_CALLS,
+  HANDLE_GATSBY_REDIRECTS: env.HANDLE_GATSBY_REDIRECTS,
 }
 export type App = typeof App
