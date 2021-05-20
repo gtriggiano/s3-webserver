@@ -29,6 +29,7 @@ export const CreateApplication = ({
     TRUST_PROXY,
     CACHE_CONTROL_MAX_AGE,
     CACHE_CONTROL_REGEXP_LIST,
+    CACHE_CONTROL_REGEXP_BLACKLIST,
     LOG_HTTP_CALLS,
     HANDLE_GATSBY_REDIRECTS,
   },
@@ -174,13 +175,26 @@ export const CreateApplication = ({
         }
       })
       if (body) {
-        const shouldAddCacheControl = some(
+        const isKeyEligibleForImmutableCaching = some(
           CACHE_CONTROL_REGEXP_LIST,
           (regExp) => regExp.test(key),
         )
 
-        if (shouldAddCacheControl) {
-          res.setHeader('Cache-Control', `max-age=${CACHE_CONTROL_MAX_AGE}`)
+        const isKeyBlacklistedFromImmutableCaching = some(
+          CACHE_CONTROL_REGEXP_BLACKLIST,
+          (regExp) => regExp.test(key),
+        )
+
+        if (
+          isKeyEligibleForImmutableCaching &&
+          !isKeyBlacklistedFromImmutableCaching
+        ) {
+          res.setHeader(
+            'Cache-Control',
+            `public, max-age=${CACHE_CONTROL_MAX_AGE}, immutable`,
+          )
+        } else {
+          res.setHeader('Cache-Control', `public, no-cache`)
         }
 
         res.send(body)

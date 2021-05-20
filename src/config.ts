@@ -25,6 +25,7 @@ const env = cleanEnv(process.env, {
   ENABLE_DIRECTORY_LISTING: bool({ default: false }),
   FOLDER_INDEX_FILE_NAME: str({ default: 'index.html' }),
   CACHE_CONTROL_REGEXP_LIST: str({ default: '' }),
+  CACHE_CONTROL_REGEXP_BLACKLIST: str({ default: '' }),
   CACHE_CONTROL_MAX_AGE: num({ default: 60 * 60 * 24 * 5 /** 5 days */ }),
   LOG_HTTP_CALLS: bool({ default: true }),
 
@@ -67,6 +68,11 @@ export const App = {
   TRUST_PROXY: env.TRUST_PROXY,
   ENABLE_CSP: env.ENABLE_CSP,
   CACHE_CONTROL_REGEXP_LIST: env.CACHE_CONTROL_REGEXP_LIST.split('|||')
+    .filter((str) => !!str.trim())
+    .map((regexp) => new RegExp(regexp)),
+  CACHE_CONTROL_REGEXP_BLACKLIST: env.CACHE_CONTROL_REGEXP_BLACKLIST.split(
+    '|||',
+  )
     .filter((str) => !!str.trim())
     .map((regexp) => new RegExp(regexp)),
   CACHE_CONTROL_MAX_AGE: env.CACHE_CONTROL_MAX_AGE,
