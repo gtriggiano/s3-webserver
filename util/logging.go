@@ -26,6 +26,10 @@ func init() {
 	zerolog.DurationFieldInteger = true
 }
 
+func LogWithHostname(evt *zerolog.Event) *zerolog.Event {
+	return evt.Str("hostname", processHostname)
+}
+
 func JSONLogMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
@@ -70,12 +74,12 @@ func logRequest(request *ginRequestData) {
 		}
 	}
 
-	evt.Str("ip", request.ClientIP).
+	LogWithHostname(evt).
+		Str("ip", request.ClientIP).
 		Str("method", request.Method).
 		Str("path", request.Path).
 		Int("status", request.StatusCode).
 		Dur("responseTime", request.Duration).
 		Str("userAgent", request.UA).
-		Str("hostname", processHostname).
 		Msg(request.Msg)
 }
