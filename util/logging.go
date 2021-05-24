@@ -1,6 +1,7 @@
 package util
 
 import (
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,8 @@ type ginRequestData struct {
 	UA         string
 	Msg        string
 }
+
+var processHostname, _ = os.Hostname()
 
 func init() {
 	zerolog.DurationFieldUnit = time.Millisecond
@@ -73,5 +76,6 @@ func logRequest(request *ginRequestData) {
 		Int("status", request.StatusCode).
 		Dur("responseTime", request.Duration).
 		Str("userAgent", request.UA).
+		Str("hostname", processHostname).
 		Msg(request.Msg)
 }
