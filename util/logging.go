@@ -35,7 +35,7 @@ func JSONLogMiddleware() gin.HandlerFunc {
 			msg = "Request"
 		}
 
-		data := &ginRequestData{
+		request := &ginRequestData{
 			ClientIP:   c.ClientIP(),
 			Method:     c.Request.Method,
 			Path:       path,
@@ -45,19 +45,19 @@ func JSONLogMiddleware() gin.HandlerFunc {
 			Msg:        msg,
 		}
 
-		go emitLog(data)
+		go logRequest(request)
 	}
 }
 
-func emitLog(data *ginRequestData) {
+func logRequest(request *ginRequestData) {
 	var evt *zerolog.Event
 
 	switch {
-	case data.StatusCode >= 500:
+	case request.StatusCode >= 500:
 		{
 			evt = log.Error()
 		}
-	case data.StatusCode >= 400:
+	case request.StatusCode >= 400:
 		{
 			evt = log.Warn()
 		}
@@ -67,11 +67,11 @@ func emitLog(data *ginRequestData) {
 		}
 	}
 
-	evt.Str("ip", data.ClientIP).
-		Str("method", data.Method).
-		Str("path", data.Path).
-		Int("status", data.StatusCode).
-		Dur("responseTime", data.Duration).
-		Str("userAgent", data.UA).
-		Msg(data.Msg)
+	evt.Str("ip", request.ClientIP).
+		Str("method", request.Method).
+		Str("path", request.Path).
+		Int("status", request.StatusCode).
+		Dur("responseTime", request.Duration).
+		Str("userAgent", request.UA).
+		Msg(request.Msg)
 }
