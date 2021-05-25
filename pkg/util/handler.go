@@ -50,10 +50,7 @@ func MainHandler(config Config) gin.HandlerFunc {
 			}
 		}
 
-		response := s3Client.ListBucketPath(ListBucketPathRequest{
-			Ctx:  ginCtx.Request.Context(),
-			Path: path,
-		})
+		response := s3Client.ListBucketPath(path)
 
 		if config.S3.CacheResponses {
 			listBucketPathResponsesCache.Set(*path, response, cacheKeysExpiration)
@@ -70,10 +67,7 @@ func MainHandler(config Config) gin.HandlerFunc {
 			}
 		}
 
-		response := s3Client.GetKey(GetKeyRequest{
-			Ctx: ginCtx.Request.Context(),
-			Key: key,
-		})
+		response := s3Client.GetKey(key)
 
 		if config.S3.CacheResponses {
 			getKeyResponsesCache.Set(*key, response, cacheKeysExpiration)

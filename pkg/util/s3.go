@@ -53,11 +53,6 @@ func NewS3Client(config S3Config) *S3Client {
 	}
 }
 
-type GetKeyRequest struct {
-	Ctx context.Context
-	Key *string
-}
-
 type GetKeyResponse struct {
 	Err         error
 	Body        []byte
@@ -65,15 +60,15 @@ type GetKeyResponse struct {
 	Headers     map[string]string
 }
 
-func (c *S3Client) GetKey(req GetKeyRequest) *GetKeyResponse {
+func (c *S3Client) GetKey(key *string) *GetKeyResponse {
 	var response *GetKeyResponse
 	headers := make(map[string]string)
 
 	start := time.Now()
 
-	output, err := c.s3.GetObject(req.Ctx, &s3.GetObjectInput{
+	output, err := c.s3.GetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: c.bucket,
-		Key:    req.Key,
+		Key:    key,
 	})
 
 	duration := time.Since(start)
@@ -129,17 +124,12 @@ func (c *S3Client) GetKey(req GetKeyRequest) *GetKeyResponse {
 		LogWithHostname(evt).
 			Str("service", "S3").
 			Str("operation", "GetKey").
-			Str("key", *req.Key).
+			Str("key", *key).
 			Dur("responseTime", duration).
 			Send()
 	}
 
 	return response
-}
-
-type ListBucketPathRequest struct {
-	Ctx  context.Context
-	Path *string
 }
 
 type ListBucketPathResponse struct {
@@ -148,10 +138,10 @@ type ListBucketPathResponse struct {
 	Folders []string
 }
 
-func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResponse {
-	path := *req.Path
-	if strings.HasSuffix(path, "/") == false {
-		path = fmt.Sprintf("%s/", path)
+func (c *S3Client) ListBucketPath(path *string) *ListBucketPathResponse {
+	bucketPath := *path
+	if strings.HasSuffix(bucketPath, "/") == false {
+		bucketPath = fmt.Sprintf("%s/", bucketPath)
 	}
 
 	var finalError error
@@ -173,11 +163,11 @@ func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResp
 		}
 
 		if output.IsTruncated {
-			output, err := c.s3.ListObjectsV2(req.Ctx, &s3.ListObjectsV2Input{
+			output, err := c.s3.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{
 				Bucket:            c.bucket,
 				MaxKeys:           1000000,
 				Delimiter:         c.pathDelimiter,
-				Prefix:            &path,
+				Prefix:            &bucketPath,
 				ContinuationToken: output.ContinuationToken,
 			})
 			populateResults(output, err)
@@ -186,12 +176,12 @@ func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResp
 
 	start := time.Now()
 
-	output, err := c.s3.ListObjectsV2(req.Ctx, &s3.ListObjectsV2Input{
+	output, err := c.s3.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{
 		Bucket:     c.bucket,
 		MaxKeys:    1000000,
 		Delimiter:  c.pathDelimiter,
-		Prefix:     &path,
-		StartAfter: &path,
+		Prefix:     &bucketPath,
+		StartAfter: &bucketPath,
 	})
 
 	populateResults(output, err)
@@ -217,7 +207,7 @@ func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResp
 		LogWithHostname(evt).
 			Str("service", "S3").
 			Str("operation", "ListBucketPath").
-			Str("path", path).
+			Str("path", bucketPath).
 			Dur("responseTime", duration).
 			Int("totalFiles", len(files)).
 			Int("totalFolders", len(folders)).
