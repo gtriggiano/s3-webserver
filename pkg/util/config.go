@@ -80,12 +80,16 @@ func LoadConfig() Config {
 		Bucket:          getEnv("S3_BUCKET", Required),
 		CacheResponses:  getEnvAsBool("S3_CACHE_RESPONSES", true),
 		CacheTTL:        getEnvAsInt("S3_CACHE_TTL", 60),
-		Endpoint:        getEnv("S3_ENDPOINT", Required),
+		Endpoint:        getEnv("S3_ENDPOINT", ""),
 		Folder:          s3Folder,
 		ForcePathStyle:  getEnvAsBool("S3_FORCE_PATH_STYLE", false),
-		ImmutableTree:   getEnvAsBool("S3_FORCE_PATH_STYLE", false),
+		ImmutableTree:   getEnvAsBool("S3_IMMUTABLE_TREE", false),
 		LogRequests:     getEnvAsBool("LOG_S3_REQUESTS", true),
 		Region:          getEnv("S3_REGION", ""),
+	}
+
+	if s3Config.Region == "" && s3Config.Endpoint == "" {
+		log.Fatal("If you do not set S3_ENDPOINT then S3_REGION is mandatory")
 	}
 
 	return Config{
