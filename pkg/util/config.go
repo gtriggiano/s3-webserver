@@ -57,7 +57,7 @@ func LoadConfig() Config {
 		CacheControlMaxAge:          getEnvAsInt("CACHE_CONTROL_MAX_AGE", 63072000),
 		CacheControlRegexpBlacklist: getEnvAsRegexpList("CACHE_CONTROL_REGEXP_BLACKLIST", "|||"),
 		CacheControlRegexpList:      getEnvAsRegexpList("CACHE_CONTROL_REGEXP_LIST", "|||"),
-		Default403File:              getEnv("DEFAULT_404_FILE", ""),
+		Default403File:              getEnv("DEFAULT_403_FILE", ""),
 		Default404File:              getEnv("DEFAULT_404_FILE", ""),
 		EnableDirectoryListing:      getEnvAsBool("ENABLE_DIRECTORY_LISTING", false),
 		FolderIndexFileName:         getEnv("FOLDER_INDEX_FILE_NAME", "index.html"),
