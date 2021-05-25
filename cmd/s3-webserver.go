@@ -22,6 +22,7 @@ func main() {
 	processStartTime := time.Now()
 	config := util.LoadConfig()
 
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.ForwardedByClientIP = config.App.TrustProxy
 
