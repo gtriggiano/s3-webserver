@@ -48,6 +48,7 @@ type S3Config struct {
 	Folder          string
 	ForcePathStyle  bool
 	ImmutableTree   bool
+	LogRequests     bool
 	Region          string
 }
 
@@ -85,6 +86,7 @@ func LoadConfig() Config {
 		Folder:          s3Folder,
 		ForcePathStyle:  getEnvAsBool("S3_FORCE_PATH_STYLE", false),
 		ImmutableTree:   getEnvAsBool("S3_FORCE_PATH_STYLE", false),
+		LogRequests:     getEnvAsBool("LOG_S3_REQUESTS", true),
 		Region:          getEnv("S3_REGION", ""),
 	}
 

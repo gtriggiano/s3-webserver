@@ -7,16 +7,20 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type S3Client struct {
 	s3            *s3.Client
 	bucket        *string
 	pathDelimiter *string
+	logRequests   bool
 }
 
 func NewS3Client(config S3Config) *S3Client {
@@ -45,6 +49,7 @@ func NewS3Client(config S3Config) *S3Client {
 		s3:            s3.NewFromConfig(awsConfig),
 		bucket:        &config.Bucket,
 		pathDelimiter: &pathDelimiter,
+		logRequests:   config.LogRequests,
 	}
 }
 
@@ -61,47 +66,74 @@ type GetKeyResponse struct {
 }
 
 func (c *S3Client) GetKey(req GetKeyRequest) *GetKeyResponse {
+	var response *GetKeyResponse
 	headers := make(map[string]string)
+
+	start := time.Now()
 
 	output, err := c.s3.GetObject(req.Ctx, &s3.GetObjectInput{
 		Bucket: c.bucket,
 		Key:    req.Key,
 	})
 
+	duration := time.Since(start)
+
 	if err != nil {
-		return &GetKeyResponse{
+		response = &GetKeyResponse{
 			Err:         err,
 			Body:        make([]byte, 0),
 			ContentType: "",
 			Headers:     headers,
 		}
+	} else {
+		body, err := ioutil.ReadAll(output.Body)
+
+		headers["content-length"] = strconv.Itoa(int(output.ContentLength))
+		if output.LastModified != nil {
+			headers["last-modified"] = output.LastModified.UTC().String()
+		}
+		if output.Expiration != nil {
+			headers["expiration"] = *output.Expiration
+		}
+		if output.ETag != nil {
+			headers["etag"] = *output.ETag
+		}
+		if output.ContentEncoding != nil {
+			headers["content-encoding"] = *output.ContentEncoding
+		}
+		if output.ContentType != nil {
+			headers["content-type"] = *output.ContentType
+		}
+
+		response = &GetKeyResponse{
+			Err:         err,
+			Body:        body,
+			ContentType: *output.ContentType,
+			Headers:     headers,
+		}
 	}
 
-	body, err := ioutil.ReadAll(output.Body)
+	if c.logRequests {
+		var evt *zerolog.Event
+		switch {
+		case response.Err != nil:
+			{
+				evt = log.Err(response.Err)
+			}
+		default:
+			{
+				evt = log.Info()
+			}
+		}
 
-	headers["content-length"] = strconv.Itoa(int(output.ContentLength))
-	if output.LastModified != nil {
-		headers["last-modified"] = output.LastModified.UTC().String()
-	}
-	if output.Expiration != nil {
-		headers["expiration"] = *output.Expiration
-	}
-	if output.ETag != nil {
-		headers["etag"] = *output.ETag
-	}
-	if output.ContentEncoding != nil {
-		headers["content-encoding"] = *output.ContentEncoding
-	}
-	if output.ContentType != nil {
-		headers["content-type"] = *output.ContentType
+		LogWithHostname(evt).
+			Str("service", "S3").
+			Str("operation", "GetKey").
+			Dur("responseTime", duration).
+			Send()
 	}
 
-	return &GetKeyResponse{
-		Err:         err,
-		Body:        body,
-		ContentType: *output.ContentType,
-		Headers:     headers,
-	}
+	return response
 }
 
 type ListBucketPathRequest struct {
@@ -151,6 +183,8 @@ func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResp
 		}
 	}
 
+	start := time.Now()
+
 	output, err := c.s3.ListObjectsV2(req.Ctx, &s3.ListObjectsV2Input{
 		Bucket:     c.bucket,
 		MaxKeys:    1000000,
@@ -161,8 +195,32 @@ func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResp
 
 	populateResults(output, err)
 
+	duration := time.Since(start)
+
 	sort.Strings(files)
 	sort.Strings(folders)
+
+	if c.logRequests {
+		var evt *zerolog.Event
+		switch {
+		case finalError != nil:
+			{
+				evt = log.Err(finalError)
+			}
+		default:
+			{
+				evt = log.Info()
+			}
+		}
+
+		LogWithHostname(evt).
+			Str("service", "S3").
+			Str("operation", "ListBucketPath").
+			Dur("responseTime", duration).
+			Int("totalFiles", len(files)).
+			Int("totalFolders", len(folders)).
+			Send()
+	}
 
 	return &ListBucketPathResponse{
 		Err:     finalError,

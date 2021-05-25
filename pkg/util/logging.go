@@ -33,7 +33,7 @@ func LogWithHostname(evt *zerolog.Event) *zerolog.Event {
 	return evt.Str("hostname", processHostname)
 }
 
-func JSONLogMiddleware() gin.HandlerFunc {
+func HTTPLogMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 		start := time.Now()
@@ -55,11 +55,11 @@ func JSONLogMiddleware() gin.HandlerFunc {
 			Msg:        msg,
 		}
 
-		go logRequest(request)
+		go logGinRequest(request)
 	}
 }
 
-func logRequest(request *ginRequestData) {
+func logGinRequest(request *ginRequestData) {
 	var evt *zerolog.Event
 
 	switch {
@@ -78,6 +78,7 @@ func logRequest(request *ginRequestData) {
 	}
 
 	LogWithHostname(evt).
+		Str("service", "Webserver").
 		Str("ip", request.ClientIP).
 		Str("method", request.Method).
 		Str("path", request.Path).

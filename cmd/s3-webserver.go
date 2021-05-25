@@ -27,7 +27,7 @@ func main() {
 	router.ForwardedByClientIP = config.App.TrustProxy
 
 	if config.App.LogHTTPRequests {
-		router.Use(util.JSONLogMiddleware())
+		router.Use(util.HTTPLogMiddleware())
 	}
 
 	router.Use(gin.Recovery())
