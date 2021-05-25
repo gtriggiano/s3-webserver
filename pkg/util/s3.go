@@ -129,6 +129,7 @@ func (c *S3Client) GetKey(req GetKeyRequest) *GetKeyResponse {
 		LogWithHostname(evt).
 			Str("service", "S3").
 			Str("operation", "GetKey").
+			Str("key", *req.Key).
 			Dur("responseTime", duration).
 			Send()
 	}
@@ -216,6 +217,7 @@ func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResp
 		LogWithHostname(evt).
 			Str("service", "S3").
 			Str("operation", "ListBucketPath").
+			Str("path", path).
 			Dur("responseTime", duration).
 			Int("totalFiles", len(files)).
 			Int("totalFolders", len(folders)).
