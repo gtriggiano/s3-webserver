@@ -20,9 +20,14 @@ func MainHandler(config Config) gin.HandlerFunc {
 	s3Client := NewS3Client(config.S3)
 	// default403FileKey := getDefault403FileKey(config)
 	default404FileKey := getDefault404FileKey(config)
+	cacheControlHeaderForImmutableFiles := fmt.Sprintf("public, max-age=%d, immutable", config.App.CacheControlMaxAge)
+	cacheControlHeaderForMutableFiles := "public, no-cache"
 
 	isFileKeyAFolderIndex := func(fileKey string) bool {
 		return strings.HasSuffix(fileKey, fmt.Sprintf("/%s", config.App.FolderIndexFileName))
+	}
+	isFileKeyTheDefault404File := func(fileKey string) bool {
+		return default404FileKey != nil && fileKey == *default404FileKey
 	}
 
 	getCachedListBucketPathResponse = func(path *string, ginCtx *gin.Context) *ListBucketPathResponse {
@@ -95,7 +100,7 @@ func MainHandler(config Config) gin.HandlerFunc {
 		if errors.As(response.Err, &noSuchKey) {
 			if directoryFallback {
 				serveKeyAsDirectory(key, ginCtx)
-			} else if default404FileKey != nil && *default404FileKey != *key {
+			} else if default404FileKey != nil && !isFileKeyTheDefault404File(*key) {
 				serveKeyAsFile(default404FileKey, ginCtx, false)
 			} else {
 				ginCtx.Status(http.StatusNotFound)
@@ -110,6 +115,14 @@ func MainHandler(config Config) gin.HandlerFunc {
 
 		for header, value := range response.Headers {
 			ginCtx.Header(header, value)
+		}
+
+		if !isFileKeyTheDefault404File(*key) &&
+			isPathEligibleForImmutableCaching(ginCtx.Param("path"), config.App) &&
+			!isPathBlacklistedFromImmutableCaching(ginCtx.Param("path"), config.App) {
+			ginCtx.Header("cache-control", cacheControlHeaderForImmutableFiles)
+		} else {
+			ginCtx.Header("cache-control", cacheControlHeaderForMutableFiles)
 		}
 
 		ginCtx.Data(200, response.ContentType, response.Body)
@@ -145,4 +158,22 @@ func getDefault404FileKey(config Config) *string {
 		return &key
 	}
 	return nil
+}
+
+func isPathEligibleForImmutableCaching(path string, config AppConfig) bool {
+	for _, regexp := range config.CacheControlRegexpList {
+		if regexp.Match([]byte(path)) {
+			return true
+		}
+	}
+	return false
+}
+
+func isPathBlacklistedFromImmutableCaching(path string, config AppConfig) bool {
+	for _, regexp := range config.CacheControlRegexpBlacklist {
+		if regexp.Match([]byte(path)) {
+			return true
+		}
+	}
+	return false
 }
