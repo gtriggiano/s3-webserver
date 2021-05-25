@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ func MainHandler(config Config) gin.HandlerFunc {
 	var serveKeyAsDirectory func(key *string, ginCtx *gin.Context)
 	var serveKeyAsFile func(key *string, ginCtx *gin.Context, directoryFallback bool)
 
+	GATSBY_REDIRECT_REGEX, _ := regexp.Compile(`^<script>window\.location\.href="(.+)"<\/script>$`)
 	s3Client := NewS3Client(config.S3)
 	// default403FileKey := getDefault403FileKey(config)
 	default404FileKey := getDefault404FileKey(config)
@@ -144,6 +146,14 @@ func MainHandler(config Config) gin.HandlerFunc {
 		if response.Err != nil {
 			ginCtx.Status(http.StatusInternalServerError)
 			return
+		}
+
+		if isFileKeyAFolderIndex(*key) && config.App.HandleGatsbyRedirects {
+			match := GATSBY_REDIRECT_REGEX.FindStringSubmatch(string(response.Body))
+			if len(match) > 1 {
+				ginCtx.Redirect(301, match[1])
+				return
+			}
 		}
 
 		for header, value := range response.Headers {
