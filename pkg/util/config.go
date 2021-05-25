@@ -55,7 +55,7 @@ func LoadConfig() Config {
 	appConfig := AppConfig{
 		CacheControlMaxAge:          getEnvAsInt("CACHE_CONTROL_MAX_AGE", 63072000),
 		CacheControlRegexpBlacklist: getEnvAsRegexpList("CACHE_CONTROL_REGEXP_BLACKLIST", "|||"),
-		CacheControlRegexpList:      getEnvAsRegexpList("CACHE_CONTROL_REGEXP_BLACKLIST", "|||"),
+		CacheControlRegexpList:      getEnvAsRegexpList("CACHE_CONTROL_REGEXP_LIST", "|||"),
 		Default403File:              getEnv("DEFAULT_404_FILE", ""),
 		Default404File:              getEnv("DEFAULT_404_FILE", ""),
 		EnableDirectoryListing:      getEnvAsBool("ENABLE_DIRECTORY_LISTING", false),
@@ -132,7 +132,7 @@ func getEnvAsRegexpList(key string, sep string) []*regexp.Regexp {
 	valueSlice := getEnvAsSlice(key, make([]string, 0), sep)
 	regexpList := make([]*regexp.Regexp, 0, len(valueSlice))
 	for _, expr := range valueSlice {
-		if regex, err := regexp.Compile(expr); err != nil {
+		if regex, err := regexp.Compile(expr); err == nil {
 			regexpList = append(regexpList, regex)
 		}
 	}
