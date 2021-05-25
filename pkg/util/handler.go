@@ -22,7 +22,6 @@ func MainHandler(config Config) gin.HandlerFunc {
 
 	GATSBY_REDIRECT_REGEX, _ := regexp.Compile(`^<script>window\.location\.href="(.+)"<\/script>$`)
 	s3Client := NewS3Client(config.S3)
-	// default403FileKey := getDefault403FileKey(config)
 	default404FileKey := getDefault404FileKey(config)
 	cacheControlHeaderForImmutableFiles := fmt.Sprintf("public, max-age=%d, immutable", config.App.CacheControlMaxAge)
 	cacheControlHeaderForMutableFiles := "public, no-cache"
@@ -185,14 +184,6 @@ func MainHandler(config Config) gin.HandlerFunc {
 
 func requestAcceptsJSON(c *gin.Context) bool {
 	return true
-}
-
-func getDefault403FileKey(config Config) *string {
-	if config.App.Default403File != "" {
-		key := fmt.Sprintf("%s%s", config.S3.Folder, config.App.Default403File)
-		return &key
-	}
-	return nil
 }
 
 func getDefault404FileKey(config Config) *string {
