@@ -2,9 +2,11 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -114,6 +116,11 @@ type ListBucketPathResponse struct {
 }
 
 func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResponse {
+	path := *req.Path
+	if strings.HasSuffix(path, "/") == false {
+		path = fmt.Sprintf("%s/", path)
+	}
+
 	var finalError error
 	files := make([]string, 0)
 	folders := make([]string, 0)
@@ -137,7 +144,7 @@ func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResp
 				Bucket:            c.bucket,
 				MaxKeys:           1000000,
 				Delimiter:         c.pathDelimiter,
-				Prefix:            req.Path,
+				Prefix:            &path,
 				ContinuationToken: output.ContinuationToken,
 			})
 			populateResults(output, err)
@@ -148,8 +155,8 @@ func (c *S3Client) ListBucketPath(req ListBucketPathRequest) *ListBucketPathResp
 		Bucket:     c.bucket,
 		MaxKeys:    1000000,
 		Delimiter:  c.pathDelimiter,
-		Prefix:     req.Path,
-		StartAfter: req.Path,
+		Prefix:     &path,
+		StartAfter: &path,
 	})
 
 	populateResults(output, err)
