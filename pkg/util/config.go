@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"regexp"
@@ -11,13 +12,11 @@ import (
 )
 
 const (
-	Required string = "@RequiredVariable"
+	Required string = "@@RequiredVariable"
 )
 
 func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	godotenv.Load()
 }
 
 type Config struct {
@@ -29,8 +28,8 @@ type AppConfig struct {
 	CacheControlMaxAge          int
 	CacheControlRegexpBlacklist []*regexp.Regexp
 	CacheControlRegexpList      []*regexp.Regexp
-	Default_403_file            string
-	Default_404_file            string
+	Default403File              string
+	Default404File              string
 	EnableDirectoryListing      bool
 	FolderIndexFileName         string
 	HandleGatsbyRedirects       bool
@@ -49,6 +48,7 @@ type S3Config struct {
 	Folder          string
 	ForcePathStyle  bool
 	ImmutableTree   bool
+	Region          string
 }
 
 func LoadConfig() Config {
@@ -56,14 +56,23 @@ func LoadConfig() Config {
 		CacheControlMaxAge:          getEnvAsInt("CACHE_CONTROL_MAX_AGE", 63072000),
 		CacheControlRegexpBlacklist: getEnvAsRegexpList("CACHE_CONTROL_REGEXP_BLACKLIST", "|||"),
 		CacheControlRegexpList:      getEnvAsRegexpList("CACHE_CONTROL_REGEXP_BLACKLIST", "|||"),
-		Default_403_file:            getEnv("DEFAULT_404_FILE", ""),
-		Default_404_file:            getEnv("DEFAULT_404_FILE", ""),
+		Default403File:              getEnv("DEFAULT_404_FILE", ""),
+		Default404File:              getEnv("DEFAULT_404_FILE", ""),
 		EnableDirectoryListing:      getEnvAsBool("ENABLE_DIRECTORY_LISTING", false),
 		FolderIndexFileName:         getEnv("FOLDER_INDEX_FILE_NAME", "index.html"),
 		HandleGatsbyRedirects:       getEnvAsBool("HANDLE_GATSBY_REDIRECTS", false),
 		HTTPPort:                    getEnvAsInt("HTTP_PORT", 80),
 		LogHTTPRequests:             getEnvAsBool("LOG_HTTP_REQUESTS", true),
 		TrustProxy:                  getEnvAsBool("TRUST_PROXY", false),
+	}
+
+	s3Folder := strings.TrimPrefix(
+		strings.TrimSuffix(getEnv("S3_FOLDER", Required), "/"),
+		"/",
+	)
+
+	if s3Folder != "" {
+		s3Folder = fmt.Sprintf("%s/", s3Folder)
 	}
 
 	s3Config := S3Config{
@@ -73,9 +82,10 @@ func LoadConfig() Config {
 		CacheResponses:  getEnvAsBool("S3_CACHE_RESPONSES", true),
 		CacheTTL:        getEnvAsInt("S3_CACHE_TTL", 60),
 		Endpoint:        getEnv("S3_ENDPOINT", Required),
-		Folder:          getEnv("S3_FOLDER", Required),
+		Folder:          s3Folder,
 		ForcePathStyle:  getEnvAsBool("S3_FORCE_PATH_STYLE", false),
 		ImmutableTree:   getEnvAsBool("S3_FORCE_PATH_STYLE", false),
+		Region:          getEnv("S3_REGION", ""),
 	}
 
 	return Config{

@@ -24,6 +24,9 @@ var processHostname, _ = os.Hostname()
 func init() {
 	zerolog.DurationFieldUnit = time.Millisecond
 	zerolog.DurationFieldInteger = true
+	zerolog.TimestampFunc = func() time.Time {
+		return time.Now().UTC()
+	}
 }
 
 func LogWithHostname(evt *zerolog.Event) *zerolog.Event {
