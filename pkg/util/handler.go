@@ -6,9 +6,11 @@ import (
 	"html"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/gin-gonic/gin"
+	"github.com/patrickmn/go-cache"
 )
 
 func MainHandler(config Config) gin.HandlerFunc {
@@ -30,20 +32,51 @@ func MainHandler(config Config) gin.HandlerFunc {
 		return default404FileKey != nil && fileKey == *default404FileKey
 	}
 
+	cacheDefaultExpiration := time.Duration(config.S3.CacheTTL) * time.Second
+	cacheCleanupInteval := time.Duration(config.S3.CacheTTL+300) * time.Second
+	cacheKeysExpiration := cacheDefaultExpiration
+	if config.S3.ImmutableTree {
+		cacheKeysExpiration = cache.NoExpiration
+	}
+	listBucketPathResponsesCache := cache.New(cacheDefaultExpiration, cacheCleanupInteval)
+	getKeyResponsesCache := cache.New(cacheDefaultExpiration, cacheCleanupInteval)
+
 	getCachedListBucketPathResponse = func(path *string, ginCtx *gin.Context) *ListBucketPathResponse {
+		if config.S3.CacheResponses {
+			cachedResult, found := listBucketPathResponsesCache.Get(*path)
+			if found {
+				return cachedResult.(*ListBucketPathResponse)
+			}
+		}
+
 		response := s3Client.ListBucketPath(ListBucketPathRequest{
 			Ctx:  ginCtx.Request.Context(),
 			Path: path,
 		})
 
+		if config.S3.CacheResponses {
+			listBucketPathResponsesCache.Set(*path, response, cacheKeysExpiration)
+		}
+
 		return response
 	}
 
 	getCachedGetKeyResponse = func(key *string, ginCtx *gin.Context) *GetKeyResponse {
+		if config.S3.CacheResponses {
+			cachedResult, found := getKeyResponsesCache.Get(*key)
+			if found {
+				return cachedResult.(*GetKeyResponse)
+			}
+		}
+
 		response := s3Client.GetKey(GetKeyRequest{
 			Ctx: ginCtx.Request.Context(),
 			Key: key,
 		})
+
+		if config.S3.CacheResponses {
+			getKeyResponsesCache.Set(*key, response, cacheKeysExpiration)
+		}
 
 		return response
 	}
