@@ -71,7 +71,7 @@ func LoadConfig() Config {
 		SecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", Required),
 		Bucket:          getEnv("S3_BUCKET", Required),
 		CacheResponses:  getEnvAsBool("S3_CACHE_RESPONSES", true),
-		CacheTTL:        getEnvAsInt("S3_CACHE_TTL", 60),
+		CacheTTL:        max(getEnvAsInt("S3_CACHE_TTL", 60), 30),
 		Endpoint:        getEnv("S3_ENDPOINT", ""),
 		Folder:          strings.TrimPrefix(path.Clean(fmt.Sprintf("/%s", getEnv("S3_FOLDER", Required))), "/"),
 		ForcePathStyle:  getEnvAsBool("S3_FORCE_PATH_STYLE", false),
@@ -133,4 +133,11 @@ func getEnvAsRegexpList(key string, sep string) []*regexp.Regexp {
 		}
 	}
 	return regexpList
+}
+
+func max(a, b int) int {
+	if a < b {
+		return b
+	}
+	return a
 }
