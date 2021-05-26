@@ -54,11 +54,7 @@ func S3Handler(config Config) gin.HandlerFunc {
 		response := s3Client.ListBucketPath(path)
 
 		if config.S3.CacheResponses || config.S3.ImmutableTree {
-			if response.Err != nil {
-				if config.S3.ImmutableTree {
-					listBucketPathResponsesCache.Set(path, response, cacheKeysExpiration)
-				}
-			} else {
+			if response.Err == nil {
 				listBucketPathResponsesCache.Set(path, response, cacheKeysExpiration)
 			}
 		}
@@ -78,8 +74,8 @@ func S3Handler(config Config) gin.HandlerFunc {
 
 		if config.S3.CacheResponses || config.S3.ImmutableTree {
 			if response.Err != nil {
-				var noSuchKey *types.NoSuchKey
-				if errors.As(response.Err, &noSuchKey) && config.S3.ImmutableTree {
+				var noSuchKeyError *types.NoSuchKey
+				if errors.As(response.Err, &noSuchKeyError) && config.S3.ImmutableTree {
 					getKeyResponsesCache.Set(key, response, cacheKeysExpiration)
 				}
 			} else {
