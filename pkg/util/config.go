@@ -13,7 +13,10 @@ import (
 )
 
 const (
-	Required string = "@@RequiredVariable"
+	RequiredVariable string = "@@RequiredVariable"
+	S3LogNone        int    = 0
+	S3LogError       int    = 1
+	S3LogInfo        int    = 2
 )
 
 func init() {
@@ -48,7 +51,7 @@ type S3Config struct {
 	Folder          string
 	ForcePathStyle  bool
 	ImmutableTree   bool
-	LogRequests     bool
+	LogLevel        int
 	Region          string
 }
 
@@ -66,17 +69,26 @@ func LoadConfig() Config {
 		TrustProxy:                  getEnvAsBool("TRUST_PROXY", false),
 	}
 
+	s3LogLevelEnvVar := getEnv("S3_LOG_LEVEL", "none")
+	s3LogLevel := S3LogNone
+	if s3LogLevelEnvVar == "info" {
+		s3LogLevel = S3LogInfo
+	}
+	if s3LogLevelEnvVar == "error" {
+		s3LogLevel = S3LogError
+	}
+
 	s3Config := S3Config{
-		AccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", Required),
-		SecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", Required),
-		Bucket:          getEnv("S3_BUCKET", Required),
+		AccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", RequiredVariable),
+		SecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", RequiredVariable),
+		Bucket:          getEnv("S3_BUCKET", RequiredVariable),
 		CacheResponses:  getEnvAsBool("S3_CACHE_RESPONSES", true),
 		CacheTTL:        max(getEnvAsInt("S3_CACHE_TTL", 60), 30),
 		Endpoint:        getEnv("S3_ENDPOINT", ""),
-		Folder:          strings.TrimPrefix(path.Clean(fmt.Sprintf("/%s", getEnv("S3_FOLDER", Required))), "/"),
+		Folder:          strings.TrimPrefix(path.Clean(fmt.Sprintf("/%s", getEnv("S3_FOLDER", RequiredVariable))), "/"),
 		ForcePathStyle:  getEnvAsBool("S3_FORCE_PATH_STYLE", false),
 		ImmutableTree:   getEnvAsBool("S3_IMMUTABLE_TREE", false),
-		LogRequests:     getEnvAsBool("LOG_S3_REQUESTS", true),
+		LogLevel:        s3LogLevel,
 		Region:          getEnv("S3_REGION", ""),
 	}
 
@@ -94,7 +106,7 @@ func getEnv(key string, defaultValue string) string {
 	if value, exists := os.LookupEnv(key); exists && value != "" {
 		return value
 	}
-	if defaultValue == Required {
+	if defaultValue == RequiredVariable {
 		log.Fatalf("%s environment variable is required", key)
 	}
 	return defaultValue

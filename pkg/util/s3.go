@@ -20,7 +20,7 @@ type S3Client struct {
 	s3            *s3.Client
 	bucket        *string
 	pathDelimiter *string
-	logRequests   bool
+	logLevel      int
 }
 
 func NewS3Client(config S3Config) *S3Client {
@@ -49,7 +49,7 @@ func NewS3Client(config S3Config) *S3Client {
 		s3:            s3.NewFromConfig(awsConfig),
 		bucket:        &config.Bucket,
 		pathDelimiter: &pathDelimiter,
-		logRequests:   config.LogRequests,
+		logLevel:      config.LogLevel,
 	}
 }
 
@@ -108,26 +108,30 @@ func (c *S3Client) GetKey(key string) *GetKeyResponse {
 		}
 	}
 
-	if c.logRequests {
-		var evt *zerolog.Event
-		switch {
-		case response.Err != nil:
-			{
-				evt = log.Err(response.Err)
+	go func() {
+		if c.logLevel >= S3LogError {
+			var evt *zerolog.Event
+			switch {
+			case response.Err != nil:
+				{
+					evt = log.Err(response.Err)
+				}
+			case c.logLevel >= S3LogInfo:
+				{
+					evt = log.Info()
+				}
 			}
-		default:
-			{
-				evt = log.Info()
+
+			if evt != nil {
+				LogWithHostname(evt).
+					Str("service", "S3").
+					Str("operation", "GetKey").
+					Str("key", key).
+					Dur("responseTime", duration).
+					Send()
 			}
 		}
-
-		LogWithHostname(evt).
-			Str("service", "S3").
-			Str("operation", "GetKey").
-			Str("key", key).
-			Dur("responseTime", duration).
-			Send()
-	}
+	}()
 
 	return response
 }
@@ -190,28 +194,32 @@ func (c *S3Client) ListBucketPath(bucketPath string) *ListBucketPathResponse {
 	sort.Strings(files)
 	sort.Strings(folders)
 
-	if c.logRequests {
-		var evt *zerolog.Event
-		switch {
-		case finalError != nil:
-			{
-				evt = log.Err(finalError)
+	go func() {
+		if c.logLevel >= S3LogError {
+			var evt *zerolog.Event
+			switch {
+			case finalError != nil:
+				{
+					evt = log.Err(finalError)
+				}
+			case c.logLevel >= S3LogInfo:
+				{
+					evt = log.Info()
+				}
 			}
-		default:
-			{
-				evt = log.Info()
+
+			if evt != nil {
+				LogWithHostname(evt).
+					Str("service", "S3").
+					Str("operation", "ListBucketPath").
+					Str("path", bucketPath).
+					Dur("responseTime", duration).
+					Int("totalFiles", len(files)).
+					Int("totalFolders", len(folders)).
+					Send()
 			}
 		}
-
-		LogWithHostname(evt).
-			Str("service", "S3").
-			Str("operation", "ListBucketPath").
-			Str("path", bucketPath).
-			Dur("responseTime", duration).
-			Int("totalFiles", len(files)).
-			Int("totalFolders", len(folders)).
-			Send()
-	}
+	}()
 
 	return &ListBucketPathResponse{
 		Err:     finalError,
