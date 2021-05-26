@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -65,15 +66,6 @@ func LoadConfig() Config {
 		TrustProxy:                  getEnvAsBool("TRUST_PROXY", false),
 	}
 
-	s3Folder := strings.TrimPrefix(
-		strings.TrimSuffix(getEnv("S3_FOLDER", Required), "/"),
-		"/",
-	)
-
-	if s3Folder != "" {
-		s3Folder = fmt.Sprintf("%s/", s3Folder)
-	}
-
 	s3Config := S3Config{
 		AccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", Required),
 		SecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", Required),
@@ -81,7 +73,7 @@ func LoadConfig() Config {
 		CacheResponses:  getEnvAsBool("S3_CACHE_RESPONSES", true),
 		CacheTTL:        getEnvAsInt("S3_CACHE_TTL", 60),
 		Endpoint:        getEnv("S3_ENDPOINT", ""),
-		Folder:          s3Folder,
+		Folder:          strings.TrimPrefix(path.Clean(fmt.Sprintf("/%s", getEnv("S3_FOLDER", Required))), "/"),
 		ForcePathStyle:  getEnvAsBool("S3_FORCE_PATH_STYLE", false),
 		ImmutableTree:   getEnvAsBool("S3_IMMUTABLE_TREE", false),
 		LogRequests:     getEnvAsBool("LOG_S3_REQUESTS", true),
