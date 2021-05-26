@@ -60,7 +60,7 @@ type GetKeyResponse struct {
 	Headers     map[string]string
 }
 
-func (c *S3Client) GetKey(key *string) *GetKeyResponse {
+func (c *S3Client) GetKey(key string) *GetKeyResponse {
 	var response *GetKeyResponse
 	headers := make(map[string]string)
 
@@ -68,7 +68,7 @@ func (c *S3Client) GetKey(key *string) *GetKeyResponse {
 
 	output, err := c.s3.GetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: c.bucket,
-		Key:    key,
+		Key:    &key,
 	})
 
 	duration := time.Since(start)
@@ -124,7 +124,7 @@ func (c *S3Client) GetKey(key *string) *GetKeyResponse {
 		LogWithHostname(evt).
 			Str("service", "S3").
 			Str("operation", "GetKey").
-			Str("key", *key).
+			Str("key", key).
 			Dur("responseTime", duration).
 			Send()
 	}
@@ -138,8 +138,7 @@ type ListBucketPathResponse struct {
 	Folders []string
 }
 
-func (c *S3Client) ListBucketPath(path *string) *ListBucketPathResponse {
-	bucketPath := *path
+func (c *S3Client) ListBucketPath(bucketPath string) *ListBucketPathResponse {
 	if strings.HasSuffix(bucketPath, "/") == false {
 		bucketPath = fmt.Sprintf("%s/", bucketPath)
 	}

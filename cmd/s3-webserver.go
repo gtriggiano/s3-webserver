@@ -21,6 +21,7 @@ import (
 func main() {
 	processStartTime := time.Now()
 	config := util.LoadConfig()
+	s3Handler := util.S3Handler(config)
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -34,7 +35,14 @@ func main() {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(cors.Default())
 
-	router.GET("/*path", util.MainHandler(config))
+	router.GET("/healthz", func(c *gin.Context) {
+		c.String(http.StatusOK, "")
+	})
+	router.NoRoute(func(c *gin.Context) {
+		if c.Request.Method == "GET" {
+			s3Handler(c)
+		}
+	})
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.App.HTTPPort),

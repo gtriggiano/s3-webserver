@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -14,11 +15,11 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
-func MainHandler(config Config) gin.HandlerFunc {
-	var getCachedListBucketPathResponse func(path *string, ginCtx *gin.Context) *ListBucketPathResponse
-	var getCachedGetKeyResponse func(key *string, ginCtx *gin.Context) *GetKeyResponse
-	var serveKeyAsDirectory func(key *string, ginCtx *gin.Context)
-	var serveKeyAsFile func(key *string, ginCtx *gin.Context, directoryFallback bool)
+func S3Handler(config Config) gin.HandlerFunc {
+	var getCachedListBucketPathResponse func(path string, ginCtx *gin.Context) *ListBucketPathResponse
+	var getCachedGetKeyResponse func(key string, ginCtx *gin.Context) *GetKeyResponse
+	var serveKeyAsDirectory func(key string, ginCtx *gin.Context)
+	var serveKeyAsFile func(key string, ginCtx *gin.Context, directoryFallback bool)
 
 	GATSBY_REDIRECT_REGEX, _ := regexp.Compile(`^<script>window\.location\.href="(.+)"<\/script>$`)
 	s3Client := NewS3Client(config.S3)
@@ -42,9 +43,9 @@ func MainHandler(config Config) gin.HandlerFunc {
 	listBucketPathResponsesCache := cache.New(cacheDefaultExpiration, cacheCleanupInteval)
 	getKeyResponsesCache := cache.New(cacheDefaultExpiration, cacheCleanupInteval)
 
-	getCachedListBucketPathResponse = func(path *string, ginCtx *gin.Context) *ListBucketPathResponse {
-		if config.S3.CacheResponses {
-			cachedResult, found := listBucketPathResponsesCache.Get(*path)
+	getCachedListBucketPathResponse = func(path string, ginCtx *gin.Context) *ListBucketPathResponse {
+		if config.S3.CacheResponses || config.S3.ImmutableTree {
+			cachedResult, found := listBucketPathResponsesCache.Get(path)
 			if found {
 				return cachedResult.(*ListBucketPathResponse)
 			}
@@ -52,16 +53,22 @@ func MainHandler(config Config) gin.HandlerFunc {
 
 		response := s3Client.ListBucketPath(path)
 
-		if config.S3.CacheResponses {
-			listBucketPathResponsesCache.Set(*path, response, cacheKeysExpiration)
+		if config.S3.CacheResponses || config.S3.ImmutableTree {
+			if response.Err != nil {
+				if config.S3.ImmutableTree {
+					listBucketPathResponsesCache.Set(path, response, cacheKeysExpiration)
+				}
+			} else {
+				listBucketPathResponsesCache.Set(path, response, cacheKeysExpiration)
+			}
 		}
 
 		return response
 	}
 
-	getCachedGetKeyResponse = func(key *string, ginCtx *gin.Context) *GetKeyResponse {
-		if config.S3.CacheResponses {
-			cachedResult, found := getKeyResponsesCache.Get(*key)
+	getCachedGetKeyResponse = func(key string, ginCtx *gin.Context) *GetKeyResponse {
+		if config.S3.CacheResponses || config.S3.ImmutableTree {
+			cachedResult, found := getKeyResponsesCache.Get(key)
 			if found {
 				return cachedResult.(*GetKeyResponse)
 			}
@@ -69,19 +76,26 @@ func MainHandler(config Config) gin.HandlerFunc {
 
 		response := s3Client.GetKey(key)
 
-		if config.S3.CacheResponses {
-			getKeyResponsesCache.Set(*key, response, cacheKeysExpiration)
+		if config.S3.CacheResponses || config.S3.ImmutableTree {
+			if response.Err != nil {
+				var noSuchKey *types.NoSuchKey
+				if errors.As(response.Err, &noSuchKey) && config.S3.ImmutableTree {
+					getKeyResponsesCache.Set(key, response, cacheKeysExpiration)
+				}
+			} else {
+				getKeyResponsesCache.Set(key, response, cacheKeysExpiration)
+			}
 		}
 
 		return response
 	}
 
-	serveKeyAsDirectory = func(key *string, ginCtx *gin.Context) {
+	serveKeyAsDirectory = func(key string, ginCtx *gin.Context) {
 		response := getCachedListBucketPathResponse(key, ginCtx)
 
 		if response.Err != nil {
 			if default404FileKey != nil {
-				serveKeyAsFile(default404FileKey, ginCtx, false)
+				serveKeyAsFile(*default404FileKey, ginCtx, false)
 			} else {
 				ginCtx.Status(http.StatusInternalServerError)
 			}
@@ -90,7 +104,7 @@ func MainHandler(config Config) gin.HandlerFunc {
 
 		for _, file := range response.Files {
 			if isFileKeyAFolderIndex(file) {
-				serveKeyAsFile(&file, ginCtx, false)
+				serveKeyAsFile(file, ginCtx, false)
 				return
 			}
 		}
@@ -99,7 +113,7 @@ func MainHandler(config Config) gin.HandlerFunc {
 
 		if totalFoundItems == 0 {
 			if default404FileKey != nil {
-				serveKeyAsFile(default404FileKey, ginCtx, false)
+				serveKeyAsFile(*default404FileKey, ginCtx, false)
 			} else {
 				ginCtx.Status(http.StatusNotFound)
 			}
@@ -121,15 +135,16 @@ func MainHandler(config Config) gin.HandlerFunc {
 		ginCtx.Status(http.StatusForbidden)
 	}
 
-	serveKeyAsFile = func(key *string, ginCtx *gin.Context, directoryFallback bool) {
+	serveKeyAsFile = func(key string, ginCtx *gin.Context, directoryFallback bool) {
+		requestPath := ginCtx.Request.URL.Path
 		response := getCachedGetKeyResponse(key, ginCtx)
 
 		var noSuchKey *types.NoSuchKey
 		if errors.As(response.Err, &noSuchKey) {
 			if directoryFallback {
 				serveKeyAsDirectory(key, ginCtx)
-			} else if default404FileKey != nil && !isFileKeyTheDefault404File(*key) {
-				serveKeyAsFile(default404FileKey, ginCtx, false)
+			} else if default404FileKey != nil && !isFileKeyTheDefault404File(key) {
+				serveKeyAsFile(*default404FileKey, ginCtx, false)
 			} else {
 				ginCtx.Status(http.StatusNotFound)
 			}
@@ -141,10 +156,10 @@ func MainHandler(config Config) gin.HandlerFunc {
 			return
 		}
 
-		if isFileKeyAFolderIndex(*key) && config.App.HandleGatsbyRedirects {
+		if isFileKeyAFolderIndex(key) && config.App.HandleGatsbyRedirects {
 			match := GATSBY_REDIRECT_REGEX.FindStringSubmatch(string(response.Body))
 			if len(match) > 1 {
-				ginCtx.Redirect(301, match[1])
+				ginCtx.Redirect(http.StatusMovedPermanently, match[1])
 				return
 			}
 		}
@@ -153,27 +168,52 @@ func MainHandler(config Config) gin.HandlerFunc {
 			ginCtx.Header(header, value)
 		}
 
-		if !isFileKeyTheDefault404File(*key) &&
-			isPathEligibleForImmutableCaching(ginCtx.Param("path"), config.App) &&
-			!isPathBlacklistedFromImmutableCaching(ginCtx.Param("path"), config.App) {
+		if !isFileKeyTheDefault404File(key) &&
+			isRequestPathEligibleForImmutableCaching(requestPath, config.App) &&
+			!isRequestPathBlacklistedFromImmutableCaching(requestPath, config.App) {
 			ginCtx.Header("cache-control", cacheControlHeaderForImmutableFiles)
 		} else {
 			ginCtx.Header("cache-control", cacheControlHeaderForMutableFiles)
 		}
 
-		ginCtx.Data(200, response.ContentType, response.Body)
+		if isFileKeyTheDefault404File(key) {
+			ginCtx.Data(http.StatusNotFound, response.ContentType, response.Body)
+		} else {
+			ginCtx.Data(http.StatusOK, response.ContentType, response.Body)
+		}
 	}
 
 	return func(c *gin.Context) {
-		path := strings.TrimPrefix(c.Param("path"), "/")
-		pathInBucket := html.UnescapeString(fmt.Sprintf("%s%s", config.S3.Folder, path))
+		originalPath := html.UnescapeString(c.Request.URL.Path)
+		originalPathHasTrailingSlash := strings.HasSuffix(originalPath, "/")
+		cleanPath := path.Clean(originalPath)
 
-		if path == "" || strings.HasSuffix(pathInBucket, "/") {
-			serveKeyAsDirectory(&pathInBucket, c)
+		if shouldRedirectToCleanPath(originalPath, cleanPath) {
+			if originalPathHasTrailingSlash {
+				c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("%s/", cleanPath))
+			} else {
+				c.Redirect(http.StatusMovedPermanently, cleanPath)
+			}
+
+			return
+		}
+
+		pathInBucket := path.Join(config.S3.Folder, originalPath)
+
+		if originalPathHasTrailingSlash {
+			serveKeyAsDirectory(pathInBucket, c)
 		} else {
-			serveKeyAsFile(&pathInBucket, c, true)
+			serveKeyAsFile(pathInBucket, c, true)
 		}
 	}
+}
+
+func shouldRedirectToCleanPath(originalPath, cleanPath string) bool {
+	cleanPathWithTrailinSlash := fmt.Sprintf("%s/", cleanPath)
+	if originalPath != cleanPath && originalPath != cleanPathWithTrailinSlash {
+		return true
+	}
+	return false
 }
 
 func requestAcceptsJSON(c *gin.Context) bool {
@@ -182,13 +222,13 @@ func requestAcceptsJSON(c *gin.Context) bool {
 
 func getDefault404FileKey(config Config) *string {
 	if config.App.Default404File != "" {
-		key := fmt.Sprintf("%s%s", config.S3.Folder, config.App.Default404File)
+		key := path.Join(config.S3.Folder, config.App.Default404File)
 		return &key
 	}
 	return nil
 }
 
-func isPathEligibleForImmutableCaching(path string, config AppConfig) bool {
+func isRequestPathEligibleForImmutableCaching(path string, config AppConfig) bool {
 	for _, regexp := range config.CacheControlRegexpList {
 		if regexp.Match([]byte(path)) {
 			return true
@@ -197,7 +237,7 @@ func isPathEligibleForImmutableCaching(path string, config AppConfig) bool {
 	return false
 }
 
-func isPathBlacklistedFromImmutableCaching(path string, config AppConfig) bool {
+func isRequestPathBlacklistedFromImmutableCaching(path string, config AppConfig) bool {
 	for _, regexp := range config.CacheControlRegexpBlacklist {
 		if regexp.Match([]byte(path)) {
 			return true
