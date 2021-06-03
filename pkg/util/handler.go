@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"html"
@@ -152,7 +153,7 @@ func S3Handler(config Config) gin.HandlerFunc {
 			return
 		}
 
-		if isFileKeyAFolderIndex(key) && config.App.HandleGatsbyRedirects {
+		if config.App.HandleGatsbyRedirects && isFileKeyAFolderIndex(key) {
 			match := GATSBY_REDIRECT_REGEX.FindStringSubmatch(string(response.Body))
 			if len(match) > 1 {
 				ginCtx.Redirect(http.StatusMovedPermanently, match[1])
@@ -160,22 +161,36 @@ func S3Handler(config Config) gin.HandlerFunc {
 			}
 		}
 
-		for header, value := range response.Headers {
-			ginCtx.Header(header, value)
+		responseHeaders := make(map[string]string)
+		for k, v := range response.Headers {
+			responseHeaders[k] = v
 		}
 
 		if !isFileKeyTheDefault404File(key) &&
 			isRequestPathEligibleForImmutableCaching(requestPath, config.App) &&
 			!isRequestPathBlacklistedFromImmutableCaching(requestPath, config.App) {
-			ginCtx.Header("cache-control", cacheControlHeaderForImmutableFiles)
+
+			responseHeaders["cache-control"] = cacheControlHeaderForImmutableFiles
 		} else {
-			ginCtx.Header("cache-control", cacheControlHeaderForMutableFiles)
+			responseHeaders["cache-control"] = cacheControlHeaderForMutableFiles
 		}
 
 		if isFileKeyTheDefault404File(key) {
-			ginCtx.Data(http.StatusNotFound, response.ContentType, response.Body)
+			ginCtx.DataFromReader(
+				http.StatusNotFound,
+				int64(len(response.Body)),
+				response.ContentType,
+				bytes.NewReader(response.Body),
+				responseHeaders,
+			)
 		} else {
-			ginCtx.Data(http.StatusOK, response.ContentType, response.Body)
+			ginCtx.DataFromReader(
+				http.StatusOK,
+				int64(len(response.Body)),
+				response.ContentType,
+				bytes.NewReader(response.Body),
+				responseHeaders,
+			)
 		}
 	}
 
