@@ -1,6 +1,7 @@
 package webServer
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,12 @@ func logMiddleware(config *WebserverConfig) gin.HandlerFunc {
 			}
 		}
 
-		log := config.Logger.With(
+		msg := ctx.Errors.String()
+		if msg == "" {
+			msg = http.StatusText(statusCode)
+		}
+
+		config.Logger.With(
 			"ip", ctx.ClientIP(),
 			"method", ctx.Request.Method,
 			"host", ctx.Request.Host,
@@ -39,15 +45,6 @@ func logMiddleware(config *WebserverConfig) gin.HandlerFunc {
 			"status", ctx.Writer.Status(),
 			"ms", time.Since(start).Milliseconds(),
 			"ua", ctx.Request.UserAgent(),
-		)
-
-		msg := ctx.Errors.String()
-
-		if msg == "" {
-			log.Log(level)
-		} else {
-			log.Log(level, msg)
-		}
-
+		).Log(level, msg)
 	}
 }

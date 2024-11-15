@@ -263,7 +263,7 @@ func (proxy *S3Proxy) getListBucketPathResponse(urlPath string) (*ListBucketPath
 	if proxy.config.LogS3Requests {
 		l := proxy.logger.With(
 			"key", bucketKey,
-			"responseTime", elapsed,
+			"ms", elapsed,
 		)
 
 		if response.Err != nil {
@@ -294,7 +294,7 @@ func (proxy *S3Proxy) getGetKeyResponse(urlPath string) (*GetKeyResponse, bool) 
 	if proxy.config.LogS3Requests {
 		l := proxy.logger.With(
 			"key", bucketKey,
-			"responseTime", elapsed,
+			"ms", elapsed,
 		)
 
 		if response.Err != nil {
