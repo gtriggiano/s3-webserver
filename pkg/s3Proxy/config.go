@@ -78,7 +78,7 @@ func newS3ProxyConfig(configFile string) (*s3ProxyConfig, error) {
 		CacheTTL:                      0,
 		Default404FilePath:            "",
 		EnableDirectoryListing:        false,
-		FolderIndexFileName:           "",
+		FolderIndexFileName:           "index.html",
 		HandleWindowLocationRedirects: false,
 		ImmutableTree:                 false,
 		LogS3Requests:                 false,
