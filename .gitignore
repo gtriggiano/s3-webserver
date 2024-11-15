@@ -25,6 +25,11 @@
 
 # End of https://www.toptal.com/developers/gitignore/api/go
 
+# bin folder
+bin/
+
 # Env file
 .env
 
+# Config
+config.yaml

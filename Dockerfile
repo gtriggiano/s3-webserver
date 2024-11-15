@@ -1,12 +1,26 @@
-FROM golang:1.16.3 AS build
-WORKDIR /go/src/github.com/gtriggiano/s3-webserver/
+FROM golang:1.23@sha256:c2d828fd49c47ed2b9192d2dbffed83052d8a21af465056d732c3de0d756f217 AS base
 
-COPY . .
+ENV GO111MODULE=on
+
+WORKDIR /workspace
+
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+
 RUN go mod download
-RUN go mod verify
-RUN CGO_ENABLED=0 go build -o /s3-webserver ./cmd/s3-webserver.go
 
-FROM debian:buster-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=build /s3-webserver /bin/s3-webserver
-CMD [ "s3-webserver" ]
+FROM base as builder
+COPY pkg pkg
+COPY main.go main.go
+COPY Makefile Makefile
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on make build
+
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+USER nonroot:nonroot
+COPY --chown=nonroot:nonroot --from=builder /workspace/bin/s3-webserver .
+COPY LICENSE LICENSE
+
+ENTRYPOINT [ "/s3-webserver" ]

@@ -1,3 +1,7 @@
 {
-  "recommendations": []
+  "recommendations": [
+    "golang.go",
+    "mhutchie.git-graph",
+    "ms-vscode.makefile-tools"
+  ]
 }

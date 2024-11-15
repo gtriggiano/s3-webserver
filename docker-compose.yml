@@ -1,8 +1,9 @@
-version: "3"
-
 services:
-  s3webserver:
+  s3-webserver:
     build: .
+    env_file: .env
+    command: [ "start", "--config", "config.yaml" ]
+    volumes:
+      - ./config.yaml:/config.yaml
     ports:
       - 8080:8080
-    env_file: .env
