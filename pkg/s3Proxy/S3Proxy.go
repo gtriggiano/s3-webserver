@@ -273,7 +273,10 @@ func (proxy *S3Proxy) getListBucketPathResponse(urlPath string) (*ListBucketPath
 		}
 	}
 
-	if response.Err == nil && proxy.shouldCacheS3Result(urlPath) {
+	var noSuchKey *types.NoSuchKey
+	shouldCacheResult := (response.Err == nil || errors.As(response.Err, &noSuchKey)) && proxy.shouldCacheS3Result(urlPath)
+
+	if shouldCacheResult {
 		proxy.listBucketPathResponses.Set(bucketKey, response, proxy.config.CacheTTL)
 	}
 
@@ -304,7 +307,10 @@ func (proxy *S3Proxy) getGetKeyResponse(urlPath string) (*GetKeyResponse, bool) 
 		}
 	}
 
-	if response.Err == nil && proxy.shouldCacheS3Result(urlPath) {
+	var noSuchKey *types.NoSuchKey
+	shouldCacheResult := (response.Err == nil || errors.As(response.Err, &noSuchKey)) && proxy.shouldCacheS3Result(urlPath)
+
+	if shouldCacheResult {
 		proxy.getKeyResponses.Set(bucketKey, response, proxy.config.CacheTTL)
 	}
 
