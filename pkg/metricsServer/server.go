@@ -11,16 +11,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gtriggiano/s3-webserver/pkg/utils"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func Start(config *MetricsServerConfig) {
 	defer config.WG.Done()
 
-	reg := prometheus.NewRegistry()
-	config.MetricsProvider.RegisterMetrics(reg)
-	metricsHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg})
+	metricsHandler := promhttp.HandlerFor(config.Registry, promhttp.HandlerOpts{Registry: config.Registry})
 
 	gin.SetMode(gin.ReleaseMode)
 	serverAddress := fmt.Sprintf("0.0.0.0:%d", config.ListenPort)

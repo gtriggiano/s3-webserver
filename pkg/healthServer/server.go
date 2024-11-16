@@ -21,7 +21,14 @@ func Start(config *HealthServerConfig) {
 	router := gin.New()
 
 	router.GET("/health", func(c *gin.Context) {
-		c.String(http.StatusOK, "OK")
+		err := config.HealthChecker.CheckHealth()
+
+		if err == nil {
+			c.String(http.StatusOK, "OK")
+		} else {
+			config.Logger.With("error", err).Error("S3 Healthcheck failed")
+			c.String(http.StatusServiceUnavailable, "Service Unavailable")
+		}
 	})
 
 	router.GET("/ready", func(c *gin.Context) {

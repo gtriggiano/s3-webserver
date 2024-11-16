@@ -8,16 +8,12 @@ import (
 	"go.uber.org/zap"
 )
 
-type MetricsProvider interface {
-	RegisterMetrics(prometheus.Registerer)
-}
-
 type MetricsServerConfig struct {
 	ErrChan             chan<- error
 	ListenPort          int
 	ShutdownWaitSeconds int
 	Logger              *zap.SugaredLogger
 	MainCtx             context.Context
-	MetricsProvider     MetricsProvider
+	Registry            *prometheus.Registry
 	WG                  *sync.WaitGroup
 }

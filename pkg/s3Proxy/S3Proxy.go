@@ -2,6 +2,7 @@ package s3Proxy
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"html"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/gin-gonic/gin"
 	"github.com/patrickmn/go-cache"
@@ -37,7 +39,7 @@ type S3Proxy struct {
 	s3ResponsesCounter      *prometheus.CounterVec
 }
 
-func NewS3Proxy(configFile string, logger *zap.SugaredLogger) (*S3Proxy, error) {
+func NewS3Proxy(configFile string, logger *zap.SugaredLogger, registry *prometheus.Registry) (*S3Proxy, error) {
 	config, err := newS3ProxyConfig(configFile)
 
 	if err != nil {
@@ -46,26 +48,32 @@ func NewS3Proxy(configFile string, logger *zap.SugaredLogger) (*S3Proxy, error) 
 
 	parsedConfig := config.Parsed()
 
+	s3BytesCounter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "s3_webserver_s3_bytes",
+			Help: "Total bytes downloaded from S3",
+		},
+		[]string{"host"},
+	)
+	s3ResponsesCounter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "s3_webserver_s3_responses",
+			Help: "Total number of times that the webserver needed a response from S3",
+		},
+		[]string{"fromCache", "host", "type"},
+	)
+
+	registry.MustRegister(s3BytesCounter)
+	registry.MustRegister(s3ResponsesCounter)
+
 	return &S3Proxy{
 		s3Client:                newS3Port(),
 		config:                  parsedConfig,
 		logger:                  logger,
 		getKeyResponses:         cache.New(parsedConfig.CacheTTL, parsedConfig.CacheCleanupInterval),
 		listBucketPathResponses: cache.New(parsedConfig.CacheTTL, parsedConfig.CacheCleanupInterval),
-		s3BytesCounter: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "s3_webserver_s3_bytes",
-				Help: "Total bytes downloaded from S3",
-			},
-			[]string{"host"},
-		),
-		s3ResponsesCounter: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "s3_webserver_s3_responses",
-				Help: "Total number of times that the webserver needed a response from S3",
-			},
-			[]string{"fromCache", "host", "type"},
-		),
+		s3BytesCounter:          s3BytesCounter,
+		s3ResponsesCounter:      s3ResponsesCounter,
 	}, nil
 }
 
@@ -95,13 +103,19 @@ func (proxy *S3Proxy) Answer(ctx *gin.Context) {
 	}
 }
 
-func (proxy *S3Proxy) RegisterMetrics(reg prometheus.Registerer) {
-	reg.MustRegister(proxy.s3BytesCounter)
-	reg.MustRegister(proxy.s3ResponsesCounter)
-}
-
 func (proxy *S3Proxy) CheckHealth() error {
-	return nil
+	maxKeys := int32(1)
+	pathDelimiter := "/"
+	prefix := "puppa"
+
+	_, err := proxy.s3Client.client.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{
+		Bucket:    &proxy.s3Client.bucket,
+		MaxKeys:   &maxKeys,
+		Delimiter: &pathDelimiter,
+		Prefix:    &prefix,
+	})
+
+	return err
 }
 
 func (proxy *S3Proxy) getRedirectUrl(ctx *gin.Context) *url.URL {

@@ -6,7 +6,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	s3proxy "github.com/gtriggiano/s3-webserver/pkg/s3Proxy"
 	"github.com/gtriggiano/s3-webserver/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -45,22 +44,17 @@ func StartCommand() *cobra.Command {
 				return err
 			}
 
-			s3proxy, err := s3proxy.NewS3Proxy(startFlags.ConfigFile, logger.With("component", "s3-proxy"))
-			if err != nil {
-				return err
-			}
-
 			config := StartConfig{
-				WebServerPort:       startFlags.WebServerPort,
-				HealthServerPort:    startFlags.HealthServerPort,
-				MetricsServerPort:   startFlags.MetricsServerPort,
-				ShutdownWaitSeconds: startFlags.ShutdownWaitSeconds,
-				TrustProxy:          startFlags.TrustProxy,
-				Proxy:               s3proxy,
-				Context:             mainCtx,
-				Logger:              logger,
-				TLSCertPath:         startFlags.TLSCertPath,
-				TLSKeyPath:          startFlags.TLSKeyPath,
+				WebServerPort:        startFlags.WebServerPort,
+				HealthServerPort:     startFlags.HealthServerPort,
+				MetricsServerPort:    startFlags.MetricsServerPort,
+				ShutdownWaitSeconds:  startFlags.ShutdownWaitSeconds,
+				WebserverTrustProxy:  startFlags.TrustProxy,
+				S3ProxyConfigFile:    startFlags.ConfigFile,
+				Context:              mainCtx,
+				Logger:               logger,
+				WebserverTLSCertPath: startFlags.TLSCertPath,
+				WebserverTLSKeyPath:  startFlags.TLSKeyPath,
 			}
 
 			wg, errChan, sigs := start(config)
