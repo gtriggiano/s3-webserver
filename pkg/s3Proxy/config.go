@@ -20,6 +20,7 @@ type s3ProxyConfig struct {
 	CacheTTL                      int        `yaml:"cacheTTL"`
 	Default404FilePath            string     `yaml:"default404FilePath"`
 	EnableDirectoryListing        bool       `yaml:"enableDirectoryListing"`
+	EscapePathSegments            bool       `yaml:"escapePathSegments"`
 	FolderIndexFileName           string     `yaml:"folderIndexFileName"`
 	HandleWindowLocationRedirects bool       `yaml:"handleWindowLocationRedirects"`
 	ImmutableTree                 bool       `yaml:"immutableTree"`
@@ -40,6 +41,7 @@ type parsedS3ProxyConfig struct {
 	CacheCleanupInterval                time.Duration
 	Default404FilePath                  string
 	EnableDirectoryListing              bool
+	EscapePathSegments                  bool
 	FolderIndexFileName                 string
 	HandleWindowLocationRedirects       bool
 	CacheControlHeaderForCachedFiles    string
@@ -78,6 +80,7 @@ func newS3ProxyConfig(configFile string) (*s3ProxyConfig, error) {
 		CacheTTL:                      0,
 		Default404FilePath:            "",
 		EnableDirectoryListing:        false,
+		EscapePathSegments:            false,
 		FolderIndexFileName:           "index.html",
 		HandleWindowLocationRedirects: false,
 		ImmutableTree:                 false,
@@ -148,6 +151,7 @@ func (config *s3ProxyConfig) Parsed() *parsedS3ProxyConfig {
 		CacheCleanupInterval:                time.Duration(cacheCleanupInterval) * time.Second,
 		Default404FilePath:                  config.Default404FilePath,
 		EnableDirectoryListing:              config.EnableDirectoryListing,
+		EscapePathSegments:                  config.EscapePathSegments,
 		FolderIndexFileName:                 config.FolderIndexFileName,
 		HandleWindowLocationRedirects:       config.HandleWindowLocationRedirects,
 		CacheControlHeaderForCachedFiles:    cacheControlHeaderForCachedFiles,

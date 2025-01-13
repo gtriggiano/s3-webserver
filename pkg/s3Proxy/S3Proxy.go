@@ -84,6 +84,10 @@ func (proxy *S3Proxy) Answer(ctx *gin.Context) {
 	}
 
 	urlPath := html.UnescapeString(ctx.Request.URL.Path)
+	if proxy.config.EscapePathSegments {
+		urlPath = escapePathSegments(ctx.Request.URL.Path)
+	}
+
 	urlPathHasTrailingSlash := strings.HasSuffix(urlPath, "/")
 	cleanUrlPath := path.Clean(urlPath)
 
@@ -383,4 +387,19 @@ func haveSamePathAndQueryVariables(url1, url2 *url.URL) bool {
 	query2 := url2.Query()
 
 	return reflect.DeepEqual(query1, query2)
+}
+
+func escapePathSegments(path string) string {
+	segments := make([]string, 0)
+	for _, segment := range getPathSegments(path) {
+		segments = append(segments, url.PathEscape(segment))
+	}
+	return strings.Join(segments, "/")
+}
+
+func getPathSegments(path string) []string {
+	if path == "" {
+		return []string{""}
+	}
+	return strings.Split(path, "/")
 }
